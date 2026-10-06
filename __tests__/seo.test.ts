@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import sharp from "sharp";
 import path from "node:path";
 import manifest from "@/app/manifest";
 import robots from "@/app/robots";
@@ -55,5 +56,34 @@ describe("web manifest", () => {
     expect(sizes).toEqual(expect.arrayContaining(["192x192", "512x512"]));
     expect(m.icons?.some((i) => i.purpose === "maskable")).toBe(true);
     for (const icon of m.icons ?? []) expect(fs.existsSync(path.join(process.cwd(), "public", icon.src))).toBe(true);
+  });
+});
+
+describe("site icons", () => {
+  // Google shows the favicon in a circle on light and dark results; a transparent mark disappears on dark.
+  it.each([
+    ["app/icon.png", 192],
+    ["app/apple-icon.png", 180],
+    ["public/icons/icon-192.png", 192],
+    ["public/icons/icon-512.png", 512],
+    ["public/icons/maskable-512.png", 512],
+  ])("%s is a solid %ipx square", async (file, size) => {
+    const meta = await sharp(path.join(process.cwd(), file)).metadata();
+    const stats = await sharp(path.join(process.cwd(), file)).stats();
+    expect([meta.width, meta.height]).toEqual([size, size]);
+    expect(stats.isOpaque).toBe(true);
+  });
+
+  it("the tab icon is a multiple of 48px, as Google requires, and there is no transparent SVG icon", async () => {
+    const meta = await sharp(path.join(process.cwd(), "app/icon.png")).metadata();
+    expect(meta.width! % 48).toBe(0);
+    expect(fs.existsSync(path.join(process.cwd(), "app/icon.svg"))).toBe(false);
+  });
+
+  it("favicon.ico carries 16, 32 and 48px images", () => {
+    const buf = fs.readFileSync(path.join(process.cwd(), "app/favicon.ico"));
+    const count = buf.readUInt16LE(4);
+    const sizes = Array.from({ length: count }, (_, i) => buf.readUInt8(6 + i * 16));
+    expect(sizes).toEqual([16, 32, 48]);
   });
 });

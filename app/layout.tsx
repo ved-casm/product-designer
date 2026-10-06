@@ -83,7 +83,9 @@ const SITE_LD = {
       "@type": "WebSite",
       "@id": `${SITE_URL}/#website`,
       url: SITE_URL,
+      // Google shows this as the site name in results (instead of the host).
       name: SITE_NAME,
+      alternateName: ["Ved", "Vedank Gaur Portfolio"],
       description: DESCRIPTION,
       inLanguage: "en",
       publisher: { "@id": `${SITE_URL}/#person` },
