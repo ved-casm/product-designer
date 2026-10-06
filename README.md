@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vedank Gaur - portfolio
 
-## Getting Started
+"The flow of a product designer": a portfolio built as one continuous stream of water, from a whirlpool of ideas to a lake where every project ends up shipped.
 
-First, run the development server:
+Next.js 16 (App Router) · React 19 · TypeScript · three.js (WebGL water, liquid badges, the 3D screening room) · plain CSS.
+
+## Getting started
+
+Requires Node **22.18+** (the build scripts import TypeScript directly).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Before pushing:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run check      # typecheck + lint, must be clean
+npm run build      # production build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Script | What it does |
+| --- | --- |
+| `npm run dev` / `build` / `start` | Next.js dev server, production build, production server |
+| `npm run check` | `typecheck` + `lint` |
+| `npm run media` | Optimises everything in `public/media`: AVIF + WebP twins, 800w/480w twins for project screens, video posters. Set `FFMPEG_PATH` if ffmpeg is not on `PATH`. Safe to re-run; only missing files are written. |
+| `npm run og` | Link-preview images for case studies (`public/media/projects/<slug>/share.jpg`): the main screenshot with the project name on it, ~80 KB JPEG. Re-run after changing a project's title, description, impact or `og.jpg`. |
+| `npm run resume` | Builds `public/resume/VedankGaur_ProductDesigner_Resume.pdf` from `resume/resume.html` with headless Chrome (`CHROME_PATH` if it isn't found). |
 
-To learn more about Next.js, take a look at the following resources:
+## Where things live
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/                      routes + SEO files
+  page.tsx                home (client-rendered: the water hero needs the viewport)
+  work/page.tsx           all works (server-rendered)
+  work/[slug]/page.tsx    case studies (server-rendered, static for every project)
+  layout.tsx              fonts, theme script, site-wide metadata + JSON-LD
+  sitemap.ts robots.ts manifest.ts opengraph-image.tsx
+components/portfolio/
+  content.ts              ALL copy and project data - edit this, not the components
+  CaseStudy.tsx           case study page (brief, page-by-page designs, iPhone mockups, pipeline, gallery)
+  Showcase.tsx            home "case studies" section; ProjectorRoom.tsx is its 3D room
+  WaterStream.tsx         the WebGL water used everywhere
+lib/site.ts               SITE_URL and helpers for absolute URLs / JSON-LD
+public/media/projects/<slug>/
+  01..08.avif|webp        gallery screens (+ -800w twins)
+  card.avif|webp          card image (+ -480w twin)
+  pages/<key>-desktop|mobile.avif|webp   page captures for "page by page" and the iPhone mockups
+  og.jpg / share.jpg      main screenshot / link preview
+scripts/                  media, OG and resume pipelines
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Adding a case study
 
-## Deploy on Vercel
+1. Add an entry to `PROJECTS` in `components/portfolio/content.ts` (TypeScript lists every required field: `challenge`, `service`, `industry`, `goal`, `solution`, three `pillars`, ...). `pages` and `mobile` are optional; leave them out if there are no captures.
+2. Put the images in `public/media/projects/<slug>/`: `01.webp`..`0N.webp` (set `shots: N`), `card.webp`, `og.jpg` (1200×630 main screenshot) and, optionally, `pages/<key>-desktop.png|webp` and `pages/<key>-mobile.webp` (390×844 @2x).
+3. `npm run media` then `npm run og`.
+4. `npm run check && npm run build`. The page, sitemap entry, structured data and link preview are generated from the content entry.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploying (Vercel)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Import the repo in Vercel; no build settings needed.
+2. Environment variables (see `.env.example`):
+   - `NEXT_PUBLIC_SITE_URL` - your domain, e.g. `https://vedankgaur.com`. Without it the Vercel production URL is used. Canonical URLs, link previews, `sitemap.xml` and `robots.txt` all use it, so set it as soon as there's a custom domain.
+   - `GOOGLE_SITE_VERIFICATION` - optional, for Google Search Console.
+
+### Getting into Google
+
+Already in place: `sitemap.xml` (with image entries), `robots.txt`, canonical URLs, Open Graph / Twitter cards, a web manifest, and JSON-LD (`Person` + `WebSite` site-wide, `CollectionPage` on `/work`, `CreativeWork` + `BreadcrumbList` on every case study).
+
+After the first deploy:
+
+1. [Google Search Console](https://search.google.com/search-console) → add the domain → verify (DNS, or the HTML-tag token in `GOOGLE_SITE_VERIFICATION` and redeploy).
+2. Sitemaps → submit `https://<your-domain>/sitemap.xml`.
+3. URL inspection → request indexing for `/`, `/work` and the case studies.
+
+Check link previews with the [Open Graph debugger](https://www.opengraph.xyz/) or by pasting a case-study URL into WhatsApp/LinkedIn.
+
+## Notes for contributors
+
+- This is Next.js 16: read `node_modules/next/dist/docs/` before using an API you remember from older versions (see `AGENTS.md`).
+- Every WebGL component creates its context lazily and releases it on unmount (`forceContextLoss`): browsers cap live contexts at ~16 and kill the oldest.
+- Theme lives in an external store (`components/portfolio/theme.tsx`) so server-rendered pages hydrate without mismatches; `useIsMobile` does the same for the breakpoint. Prefer CSS media queries over `useIsMobile` for layout on server-rendered pages.
+- Images go through `components/Picture.tsx` (AVIF first, WebP fallback, optional `small` + `sizes` for the -800w/-480w twins).
