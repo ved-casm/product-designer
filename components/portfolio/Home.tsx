@@ -219,6 +219,9 @@ function Home() {
       }
     };
     const smooth = () => {
+      // Keep the target reachable: if the layout shrank, a target past the end would keep this loop
+      // running forever, pulling the hero back toward the end whatever else scrolls it.
+      target.val = Math.min(target.val, scroller.scrollWidth - scroller.clientWidth);
       const cur = scroller.scrollLeft;
       const diff = target.val - cur;
       if (Math.abs(diff) > 0.5) {
@@ -287,9 +290,17 @@ function Home() {
     window.addEventListener("wheel", onWheel, { passive: false, capture: true });
     scroller.addEventListener("wheel", onWheel, { passive: false });
     scroller.addEventListener("scroll", onScroll, { passive: true });
+    // "Back to top" rewinds the hero itself: stop the wheel easing so the two don't pull against each other.
+    const onGoHero = () => {
+      if (smoothRaf != null) cancelAnimationFrame(smoothRaf);
+      smoothRaf = null;
+      target.val = scroller.scrollLeft;
+    };
+    window.addEventListener("nav-go-hero", onGoHero);
     onScroll();
     const loadTimer = setTimeout(() => setHeroLoaded(true), 150);
     return () => {
+      window.removeEventListener("nav-go-hero", onGoHero);
       window.removeEventListener("wheel", onWheel, { capture: true });
       scroller.removeEventListener("wheel", onWheel);
       scroller.removeEventListener("scroll", onScroll);

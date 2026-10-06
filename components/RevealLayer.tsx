@@ -17,6 +17,9 @@ export default function RevealLayer({ unlocked, children }: { unlocked: boolean;
   const downAcc = useRef(0);
   const upAcc = useRef(0);
   const pullingBack = useRef(false);
+  // While the hero slides back, hide() parks the page at N before settling at 0; that stop at N must not
+  // count as scrolling into the works (it re-revealed them, so "back to top" landed on case studies).
+  const hidingUntil = useRef(0);
 
   // Locking again always brings the hero back (adjusted during render, not in an effect).
   const [wasUnlocked, setWasUnlocked] = useState(unlocked);
@@ -45,7 +48,7 @@ export default function RevealLayer({ unlocked, children }: { unlocked: boolean;
 
     const onScroll = () => {
       const y = window.scrollY;
-      if (!revealedRef.current && y >= N) {
+      if (!revealedRef.current && y >= N && performance.now() > hidingUntil.current) {
         revealedRef.current = true;
         setRevealed(true);
         window.dispatchEvent(new Event("works-revealed"));
@@ -58,6 +61,7 @@ export default function RevealLayer({ unlocked, children }: { unlocked: boolean;
       downAcc.current = 0;
       upAcc.current = 0;
       revealedRef.current = false;
+      hidingUntil.current = performance.now() + 900;
       window.dispatchEvent(new Event("works-hidden"));
       const htmlBehavior = document.documentElement.style.scrollBehavior;
       const bodyBehavior = document.body.style.scrollBehavior;
