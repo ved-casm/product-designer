@@ -2,6 +2,8 @@
 
 "The flow of a product designer": a portfolio built as one continuous stream of water, from a whirlpool of ideas to a lake where every project ends up shipped.
 
+**Live:** https://product-designer-five.vercel.app
+
 Next.js 16 (App Router) · React 19 · TypeScript · three.js (WebGL water, liquid badges, the 3D screening room) · plain CSS.
 
 ## Getting started
