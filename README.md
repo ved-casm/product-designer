@@ -85,3 +85,7 @@ Check link previews with the [Open Graph debugger](https://www.opengraph.xyz/) o
 - Every WebGL component creates its context lazily and releases it on unmount (`forceContextLoss`): browsers cap live contexts at ~16 and kill the oldest.
 - Theme lives in an external store (`components/portfolio/theme.tsx`) so server-rendered pages hydrate without mismatches; `useIsMobile` does the same for the breakpoint. Prefer CSS media queries over `useIsMobile` for layout on server-rendered pages.
 - Images go through `components/Picture.tsx` (AVIF first, WebP fallback, optional `small` + `sizes` for the -800w/-480w twins).
+
+## License
+
+All rights reserved. The code is public to be read, not reused: see [LICENSE](LICENSE). For permission to use any part of it, write to vedank0522@gmail.com.

@@ -1,0 +1,19 @@
+Copyright (c) 2026 Vedank Gaur. All rights reserved.
+
+This repository and everything in it - source code, design, copy, images,
+videos, 3D scenes, case-study content and the resume - are the property of
+Vedank Gaur.
+
+The repository is public so the work can be viewed. Viewing it on GitHub, and
+the forking that GitHub's Terms of Service allow on github.com, do not grant
+any licence. No permission is given to use, copy, modify, merge, publish,
+distribute, sublicense, deploy or sell any part of it, in whole or in part,
+for any purpose, without prior written permission from Vedank Gaur.
+
+To ask for permission: vedank0522@gmail.com
+
+Third-party components keep their own licences: the npm packages listed in
+package.json (e.g. Next.js, React, three.js - MIT) and the Inter and
+Newsreader fonts in public/fonts and assets/og (SIL Open Font License 1.1).
+Client project names and screenshots belong to their respective owners and
+are shown here as portfolio work.
