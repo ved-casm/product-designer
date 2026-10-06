@@ -406,7 +406,7 @@ function Lightbox({ src, onClose }: { src: string | null; onClose: () => void })
     return () => window.removeEventListener("keydown", onKey);
   }, [src, onClose]);
   return (
-    <div className={`case-lightbox${src ? " is-open" : ""}`} onClick={onClose} role="dialog" aria-hidden={!src}>
+    <div className={`case-lightbox${src ? " is-open" : ""}`} onClick={onClose} role="dialog" aria-modal="true" aria-label="Enlarged screen" aria-hidden={!src}>
       {src && <Picture src={src} alt="" />}
       <span className="case-lightbox-hint">esc / click to close</span>
     </div>

@@ -48,7 +48,7 @@ export default function RevealLayer({ unlocked, children }: { unlocked: boolean;
 
     const onScroll = () => {
       const y = window.scrollY;
-      if (!revealedRef.current && y >= N && performance.now() > hidingUntil.current) {
+      if (!revealedRef.current && y >= N && performance.now() >= hidingUntil.current) {
         revealedRef.current = true;
         setRevealed(true);
         window.dispatchEvent(new Event("works-revealed"));

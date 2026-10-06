@@ -18,7 +18,7 @@ npm run dev        # http://localhost:3000
 Before pushing:
 
 ```bash
-npm run check      # typecheck + lint, must be clean
+npm run check      # typecheck + lint + tests, must be clean
 npm run build      # production build
 ```
 
@@ -27,7 +27,8 @@ npm run build      # production build
 | Script | What it does |
 | --- | --- |
 | `npm run dev` / `build` / `start` | Next.js dev server, production build, production server |
-| `npm run check` | `typecheck` + `lint` |
+| `npm run check` | `typecheck` + `lint` + `test` |
+| `npm test` / `test:watch` / `test:coverage` | Jest + React Testing Library (see Testing below) |
 | `npm run media` | Optimises everything in `public/media`: AVIF + WebP twins, 800w/480w twins for project screens, video posters. Set `FFMPEG_PATH` if ffmpeg is not on `PATH`. Safe to re-run; only missing files are written. |
 | `npm run og` | Link-preview images for case studies (`public/media/projects/<slug>/share.jpg`): the main screenshot with the project name on it, ~80 KB JPEG. Re-run after changing a project's title, description, impact or `og.jpg`. |
 | `npm run resume` | Builds `public/resume/VedankGaur_ProductDesigner_Resume.pdf` from `resume/resume.html` with headless Chrome (`CHROME_PATH` if it isn't found). |
@@ -80,6 +81,23 @@ After the first deploy:
 3. URL inspection → request indexing for `/`, `/work` and the case studies.
 
 Check link previews with the [Open Graph debugger](https://www.opengraph.xyz/) or by pasting a case-study URL into WhatsApp/LinkedIn.
+
+## Testing
+
+Jest + React Testing Library, set up through `next/jest` (Next's SWC compiler, CSS mocks, `.env`). Tests live in `__tests__/`; `jest.setup.ts` adds the browser APIs jsdom lacks (IntersectionObserver, ResizeObserver, matchMedia, requestIdleCallback) and reports no WebGL, so the fallbacks get exercised.
+
+What they cover:
+
+- **content** - every project has its full brief, unique slug and every image it references on disk.
+- **SEO** - sitemap (all pages, only existing images), robots, manifest icons, JSON-LD escaping.
+- **Picture** - AVIF/WebP pairs and the srcset twins.
+- **theme / useIsMobile** - one shared theme across providers, persisted on toggle; breakpoint on first render and on resize.
+- **RevealLayer** - "back to top" brings the desktop hero back and stays there (regression test).
+- **WorkGrid** - every card is a real link; filters.
+- **CaseStudy** - brief, pillars, page-by-page designs, iPhone frames, lightbox, next project, heading order, switching case studies.
+- **404** and **ProjectorRoom** (no-WebGL fallback).
+
+WebGL itself (the water, the room, the lake) can't render in jsdom; check it in a browser.
 
 ## Notes for contributors
 
