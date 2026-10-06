@@ -483,18 +483,28 @@ export default function WaterStream({ svgRef, viewBox, streams, theme, filterSou
   useEffect(() => {
     const box = boxRef.current;
     if (!box || near) return;
+    let idle = 0;
     const io = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) {
-          setNear(true);
           io.disconnect();
+          // Creating a context and compiling shaders takes a beat: do it in an idle moment,
+          // not in the middle of a scroll frame.
+          idle = window.requestIdleCallback
+            ? window.requestIdleCallback(() => setNear(true), { timeout: 400 })
+            : window.setTimeout(() => setNear(true), 0);
         }
       },
       { rootMargin: "60% 60% 60% 60%" },
     );
-    io.observe(box);
-    return () => io.disconnect();
-  }, [near]);
+    // A windowed box stays wherever it last drew, possibly far down its section: watch the section instead.
+    io.observe(windowed ? (box.parentElement ?? box) : box);
+    return () => {
+      io.disconnect();
+      if (window.cancelIdleCallback) window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+    };
+  }, [near, windowed]);
 
   useEffect(() => {
     const box = boxRef.current;
@@ -511,10 +521,49 @@ export default function WaterStream({ svgRef, viewBox, streams, theme, filterSou
       canvas.remove();
       return;
     }
+    // Reading shader logs after every compile makes the browser wait for the compile to finish; only useful in dev.
+    renderer.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
     renderer.setClearColor(0x000000, 0);
     const scene = new Scene();
     const camera = new OrthographicCamera(0, 1, 0, 1, 0.1, 10);
     camera.position.z = 1;
+
+    // Only streams on (or about to come on) screen render; the rest skip their frame entirely, layout reads included.
+    // A windowed box only moves while it draws, so watch its section instead or it could strand itself off screen.
+    const watched = windowed ? (box.parentElement ?? box) : box;
+    let onScreen = true;
+    const seen = new IntersectionObserver(([e]) => (onScreen = e.isIntersecting), { rootMargin: "25%" });
+    seen.observe(watched);
+    // Browsers keep only a handful of WebGL contexts alive (fewer on phones) and kill the oldest past that, which
+    // left the hero stream blank after scrolling the whole page. A stream ~3 screens away gives its context back
+    // in an idle moment (not mid-scroll, and not if it comes back first) and builds a new one when it comes near
+    // again (the effect re-runs through `near`).
+    let release = 0;
+    const cancelRelease = () => {
+      if (!release) return;
+      if (window.cancelIdleCallback) window.cancelIdleCallback(release);
+      else window.clearTimeout(release);
+      release = 0;
+    };
+    const far = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) cancelRelease();
+        else if (!release)
+          release = window.requestIdleCallback
+            ? window.requestIdleCallback(() => setNear(false), { timeout: 3000 })
+            : window.setTimeout(() => setNear(false), 500);
+      },
+      { rootMargin: "300%" },
+    );
+    far.observe(watched);
+    // If the browser takes the context anyway, rebuild instead of staying blank.
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      setNear(false);
+    };
+    canvas.addEventListener("webglcontextlost", onLost);
+    // Phones have 3× screens; the glow reads the same at 1.5× for less than half the pixels.
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
 
     const entries: Entry[] = [];
     let appliedTheme: WaterTheme | null = null;
@@ -526,11 +575,15 @@ export default function WaterStream({ svgRef, viewBox, streams, theme, filterSou
 
     // Windowed mode: keep the box covering the visible slice of its parent, moving it
     // only when the viewport is about to leave it (the move and the redraw share a frame).
+    // The height only ever grows: on phones the address bar changes innerHeight while scrolling, and resizing
+    // would reallocate the drawing buffer every time it slides.
+    let tallest = 0;
     const placeWindow = () => {
       const host = box.parentElement;
       if (!host) return;
       const vh = window.innerHeight;
-      const h = Math.round(vh * 2);
+      tallest = Math.max(tallest, vh);
+      const h = Math.round(tallest * 2);
       if (box.style.height !== `${h}px`) box.style.height = `${h}px`;
       const hostRect = host.getBoundingClientRect();
       const visTop = -hostRect.top;
@@ -688,7 +741,7 @@ export default function WaterStream({ svgRef, viewBox, streams, theme, filterSou
       if (cRect.width !== cssW || cRect.height !== cssH) {
         cssW = cRect.width;
         cssH = cRect.height;
-        renderer.setPixelRatio(Math.min(modestDpr ? 1.25 : 2, window.devicePixelRatio || 1));
+        renderer.setPixelRatio(Math.min(modestDpr ? 1.25 : coarse ? 1.5 : 2, window.devicePixelRatio || 1));
         renderer.setSize(cssW, cssH, false);
         camera.left = 0;
         camera.right = cssW;
@@ -746,7 +799,7 @@ export default function WaterStream({ svgRef, viewBox, streams, theme, filterSou
     modestDpr = modest;
     const frame = (t: number) => {
       raf = requestAnimationFrame(frame);
-      if (t - lastFrame < minFrameMs) return;
+      if (!onScreen || t - lastFrame < minFrameMs) return;
       lastFrame = t;
       draw();
     };
@@ -758,6 +811,10 @@ export default function WaterStream({ svgRef, viewBox, streams, theme, filterSou
 
     return () => {
       cancelAnimationFrame(raf);
+      seen.disconnect();
+      far.disconnect();
+      cancelRelease();
+      canvas.removeEventListener("webglcontextlost", onLost);
       window.removeEventListener(WATER_SYNC_EVENT, draw);
       for (const e of entries) {
         e.geo.dispose();

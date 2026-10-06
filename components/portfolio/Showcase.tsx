@@ -53,8 +53,9 @@ export default function Showcase() {
     };
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
-    // Fetch the room's code while the browser is idle, so it's ready when the visitor gets there.
-    const prefetch = window.setTimeout(() => void import("./ProjectorRoom"), 6000);
+    // Fetch the room's code and paint its textures while the browser is idle, so it's ready when the visitor
+    // gets there and mounting it never stalls a scroll.
+    const prefetch = window.setTimeout(() => void import("./ProjectorRoom").then((m) => m.warmRoom()), 6000);
     window.addEventListener("resize", onScroll);
     return () => {
       window.clearTimeout(prefetch);

@@ -266,13 +266,16 @@ export default function LakeScene({ theme, style, className }: Props) {
     let renderer: WebGLRenderer;
     try {
       if (!hasWebGL()) throw new Error("no webgl");
-      renderer = new WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+      renderer = new WebGLRenderer({ antialias: !mobile, alpha: false, powerPreference: "high-performance" });
     } catch {
       // No WebGL: fall back to a painted sky-and-water gradient.
       host.classList.add("lake-fallback");
       return;
     }
-    renderer.setPixelRatio(Math.min(mobile ? 1.5 : 1.75, window.devicePixelRatio || 1));
+    // Phones: dense screens hide aliasing, so no MSAA and a lower ratio keep this full-screen scene fluid.
+    renderer.setPixelRatio(Math.min(mobile ? 1.25 : 1.75, window.devicePixelRatio || 1));
+    // Reading shader logs after every compile makes the browser wait for it; only useful in dev.
+    renderer.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
     renderer.outputColorSpace = SRGBColorSpace;
     host.appendChild(renderer.domElement);
     renderer.domElement.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block";

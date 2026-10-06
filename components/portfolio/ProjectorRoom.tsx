@@ -74,15 +74,46 @@ const SCREEN = { x: 0, y: 2.55, z: BACK + 0.06, hw: 2.6, hh: 1.4625 };
 
 /* ---------- procedural textures (bright bases, tinted per theme by material.color) ---------- */
 
-function canvasTex(size: number, draw: (g: CanvasRenderingContext2D, s: number) => void, repeat = 1) {
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-  draw(c.getContext("2d")!, size);
-  const t = new CanvasTexture(c);
-  t.colorSpace = SRGBColorSpace;
-  t.wrapS = t.wrapT = RepeatWrapping;
-  t.repeat.set(repeat, repeat);
-  t.anisotropy = 4;
+// Painting these takes a few hundred milliseconds on a phone. Each one is painted once per page and cached,
+// and warmRoom() paints them ahead of time in idle moments, so the room never stalls a scroll when it mounts.
+type Painter = { w: number; h: number; draw: (g: CanvasRenderingContext2D, w: number, h: number) => void };
+const baked = new Map<string, HTMLCanvasElement>();
+const bake = (key: string) => {
+  let c = baked.get(key);
+  if (!c) {
+    const p = PAINTERS[key];
+    c = document.createElement("canvas");
+    c.width = p.w;
+    c.height = p.h;
+    p.draw(c.getContext("2d")!, p.w, p.h);
+    baked.set(key, c);
+  }
+  return c;
+};
+
+/** Paints every room texture ahead of time, one per idle moment. */
+export function warmRoom() {
+  const keys = Object.keys(PAINTERS).filter((k) => !baked.has(k));
+  const next = () => {
+    const k = keys.shift();
+    if (!k) return;
+    bake(k);
+    if (window.requestIdleCallback) window.requestIdleCallback(next, { timeout: 2000 });
+    else window.setTimeout(next, 50);
+  };
+  if (window.requestIdleCallback) window.requestIdleCallback(next, { timeout: 2000 });
+  else window.setTimeout(next, 50);
+}
+
+/** A texture over a cached painting; tiled ones repeat. */
+function tex(key: string, repeat = 0) {
+  const t = new CanvasTexture(bake(key));
+  if (key !== "shadow" && key !== "halo" && key !== "sun") t.colorSpace = SRGBColorSpace;
+  if (repeat) {
+    t.wrapS = t.wrapT = RepeatWrapping;
+    t.repeat.set(repeat, repeat);
+  }
+  if (key !== "shadow" && key !== "halo" && key !== "sun") t.anisotropy = 4;
   return t;
 }
 
@@ -91,11 +122,12 @@ const rand = (seed: number) => () => {
   return seed / 2147483647;
 };
 
-/** Oak planks. */
-const woodTex = () =>
-  canvasTex(
-    1024,
-    (g, s) => {
+const PAINTERS: Record<string, Painter> = {
+  /** Oak planks. */
+  wood: {
+    w: 1024,
+    h: 1024,
+    draw(g, s) {
       const r = rand(7);
       const rows = 8;
       const h = s / rows;
@@ -123,14 +155,12 @@ const woodTex = () =>
         g.fillRect(0, y * h + h - 2, s, 2);
       }
     },
-    3,
-  );
-
-/** Soft plaster. */
-const plasterTex = () =>
-  canvasTex(
-    512,
-    (g, s) => {
+  },
+  /** Soft plaster. */
+  plaster: {
+    w: 512,
+    h: 512,
+    draw(g, s) {
       g.fillStyle = "#f2f2f2";
       g.fillRect(0, 0, s, s);
       const r = rand(3);
@@ -140,39 +170,39 @@ const plasterTex = () =>
         g.fillRect(r() * s, r() * s, d, d);
       }
     },
-    4,
-  );
-
-/** Hand-loomed rug: ivory with deep-blue bands and a fine weave. */
-const rugTex = () =>
-  canvasTex(1024, (g, s) => {
-    g.fillStyle = "#e4ded2";
-    g.fillRect(0, 0, s, s);
-    g.fillStyle = "#1d3a5f";
-    for (const b of [0.08, 0.14, 0.86, 0.92]) g.fillRect(0, b * s, s, s * 0.025);
-    g.fillStyle = "#2f80ff";
-    g.fillRect(0, 0.495 * s, s, s * 0.01);
-    for (let i = 0; i < 6; i++) {
-      g.save();
-      g.translate(s * (0.1 + i * 0.16), s * 0.5);
-      g.rotate(Math.PI / 4);
-      g.strokeStyle = "#1d3a5f";
-      g.lineWidth = 6;
-      g.strokeRect(-26, -26, 52, 52);
-      g.restore();
-    }
-    const r = rand(11);
-    for (let i = 0; i < 40000; i++) {
-      g.fillStyle = `rgba(0,0,0,${r() * 0.06})`;
-      g.fillRect(r() * s, r() * s, 2, 1);
-    }
-  });
-
-/** Woven upholstery (white; the material colour dyes it). */
-const fabricTex = () =>
-  canvasTex(
-    256,
-    (g, s) => {
+  },
+  /** Hand-loomed rug: ivory with deep-blue bands and a fine weave. */
+  rug: {
+    w: 1024,
+    h: 1024,
+    draw(g, s) {
+      g.fillStyle = "#e4ded2";
+      g.fillRect(0, 0, s, s);
+      g.fillStyle = "#1d3a5f";
+      for (const b of [0.08, 0.14, 0.86, 0.92]) g.fillRect(0, b * s, s, s * 0.025);
+      g.fillStyle = "#2f80ff";
+      g.fillRect(0, 0.495 * s, s, s * 0.01);
+      for (let i = 0; i < 6; i++) {
+        g.save();
+        g.translate(s * (0.1 + i * 0.16), s * 0.5);
+        g.rotate(Math.PI / 4);
+        g.strokeStyle = "#1d3a5f";
+        g.lineWidth = 6;
+        g.strokeRect(-26, -26, 52, 52);
+        g.restore();
+      }
+      const r = rand(11);
+      for (let i = 0; i < 40000; i++) {
+        g.fillStyle = `rgba(0,0,0,${r() * 0.06})`;
+        g.fillRect(r() * s, r() * s, 2, 1);
+      }
+    },
+  },
+  /** Woven upholstery (white; the material colour dyes it). */
+  fabric: {
+    w: 256,
+    h: 256,
+    draw(g, s) {
       g.fillStyle = "#ffffff";
       g.fillRect(0, 0, s, s);
       for (let y = 0; y < s; y += 3) {
@@ -184,115 +214,103 @@ const fabricTex = () =>
         g.fillRect(x, 0, 1, s);
       }
     },
-    3,
-  );
-
-/** A fiddle-leaf fig leaf: violin-shaped, glossy, with a pale midrib and arching side veins. Transparent outside the leaf. */
-const leafTexture = () => {
-  const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 384;
-  const g = c.getContext("2d")!;
-  const w = c.width;
-  const h = c.height;
-  // Outline: narrow at the stalk (bottom), widest near the top, a soft wavy edge and a short tip.
-  const leaf = new Path2D();
-  leaf.moveTo(w / 2, h - 4);
-  leaf.bezierCurveTo(w * 0.3, h * 0.92, w * 0.16, h * 0.72, w * 0.2, h * 0.56);
-  leaf.bezierCurveTo(w * 0.24, h * 0.44, w * 0.02, h * 0.36, w * 0.06, h * 0.2);
-  leaf.bezierCurveTo(w * 0.1, h * 0.06, w * 0.36, h * 0.02, w / 2, 6);
-  leaf.bezierCurveTo(w * 0.64, h * 0.02, w * 0.9, h * 0.06, w * 0.94, h * 0.2);
-  leaf.bezierCurveTo(w * 0.98, h * 0.36, w * 0.76, h * 0.44, w * 0.8, h * 0.56);
-  leaf.bezierCurveTo(w * 0.84, h * 0.72, w * 0.7, h * 0.92, w / 2, h - 4);
-  g.save();
-  g.clip(leaf);
-  const body = g.createLinearGradient(0, h, w, 0);
-  body.addColorStop(0, "#1c4426");
-  body.addColorStop(0.55, "#2c6436");
-  body.addColorStop(1, "#3f7d43");
-  g.fillStyle = body;
-  g.fillRect(0, 0, w, h);
-  // Mottling so it doesn't read as flat plastic.
-  const r = rand(17);
-  for (let i = 0; i < 1400; i++) {
-    g.fillStyle = r() > 0.5 ? `rgba(120,170,90,${r() * 0.06})` : `rgba(0,30,10,${r() * 0.08})`;
-    g.beginPath();
-    g.arc(r() * w, r() * h, 2 + r() * 6, 0, Math.PI * 2);
-    g.fill();
-  }
-  // Side veins arching up from the midrib toward the edge.
-  g.lineCap = "round";
-  for (let i = 0; i < 9; i++) {
-    const y = h * (0.86 - i * 0.085);
-    for (const side of [-1, 1]) {
-      g.strokeStyle = "rgba(170,205,140,0.35)";
-      g.lineWidth = 2.2 - i * 0.12;
+  },
+  /** A fiddle-leaf fig leaf: violin-shaped, glossy, with a pale midrib and arching side veins. Transparent outside the leaf. */
+  leaf: {
+    w: 256,
+    h: 384,
+    draw(g, w, h) {
+      // Outline: narrow at the stalk (bottom), widest near the top, a soft wavy edge and a short tip.
+      const leaf = new Path2D();
+      leaf.moveTo(w / 2, h - 4);
+      leaf.bezierCurveTo(w * 0.3, h * 0.92, w * 0.16, h * 0.72, w * 0.2, h * 0.56);
+      leaf.bezierCurveTo(w * 0.24, h * 0.44, w * 0.02, h * 0.36, w * 0.06, h * 0.2);
+      leaf.bezierCurveTo(w * 0.1, h * 0.06, w * 0.36, h * 0.02, w / 2, 6);
+      leaf.bezierCurveTo(w * 0.64, h * 0.02, w * 0.9, h * 0.06, w * 0.94, h * 0.2);
+      leaf.bezierCurveTo(w * 0.98, h * 0.36, w * 0.76, h * 0.44, w * 0.8, h * 0.56);
+      leaf.bezierCurveTo(w * 0.84, h * 0.72, w * 0.7, h * 0.92, w / 2, h - 4);
+      g.save();
+      g.clip(leaf);
+      const body = g.createLinearGradient(0, h, w, 0);
+      body.addColorStop(0, "#1c4426");
+      body.addColorStop(0.55, "#2c6436");
+      body.addColorStop(1, "#3f7d43");
+      g.fillStyle = body;
+      g.fillRect(0, 0, w, h);
+      // Mottling so it doesn't read as flat plastic.
+      const r = rand(17);
+      for (let i = 0; i < 1400; i++) {
+        g.fillStyle = r() > 0.5 ? `rgba(120,170,90,${r() * 0.06})` : `rgba(0,30,10,${r() * 0.08})`;
+        g.beginPath();
+        g.arc(r() * w, r() * h, 2 + r() * 6, 0, Math.PI * 2);
+        g.fill();
+      }
+      // Side veins arching up from the midrib toward the edge.
+      g.lineCap = "round";
+      for (let i = 0; i < 9; i++) {
+        const y = h * (0.86 - i * 0.085);
+        for (const side of [-1, 1]) {
+          g.strokeStyle = "rgba(170,205,140,0.35)";
+          g.lineWidth = 2.2 - i * 0.12;
+          g.beginPath();
+          g.moveTo(w / 2, y);
+          g.quadraticCurveTo(w / 2 + side * w * 0.2, y - h * 0.04, w / 2 + side * w * 0.44, y - h * 0.12);
+          g.stroke();
+        }
+      }
+      // Midrib.
+      g.strokeStyle = "rgba(196,222,160,0.85)";
+      g.lineWidth = 5;
       g.beginPath();
-      g.moveTo(w / 2, y);
-      g.quadraticCurveTo(w / 2 + side * w * 0.2, y - h * 0.04, w / 2 + side * w * 0.44, y - h * 0.12);
+      g.moveTo(w / 2, h);
+      g.quadraticCurveTo(w / 2 + 4, h * 0.5, w / 2, h * 0.05);
       g.stroke();
-    }
-  }
-  // Midrib.
-  g.strokeStyle = "rgba(196,222,160,0.85)";
-  g.lineWidth = 5;
-  g.beginPath();
-  g.moveTo(w / 2, h);
-  g.quadraticCurveTo(w / 2 + 4, h * 0.5, w / 2, h * 0.05);
-  g.stroke();
-  // Gloss: a soft highlight down one half.
-  const shine = g.createLinearGradient(w * 0.2, 0, w * 0.6, 0);
-  shine.addColorStop(0, "rgba(255,255,255,0)");
-  shine.addColorStop(0.6, "rgba(230,255,220,0.12)");
-  shine.addColorStop(1, "rgba(255,255,255,0)");
-  g.fillStyle = shine;
-  g.fillRect(0, 0, w, h);
-  g.restore();
-  // Darker rim.
-  g.strokeStyle = "rgba(12,40,20,0.9)";
-  g.lineWidth = 3;
-  g.stroke(leaf);
-  const t = new CanvasTexture(c);
-  t.colorSpace = SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
-};
-
-/** Soft round contact shadow. */
-const shadowTex = () => {
-  const c = document.createElement("canvas");
-  c.width = c.height = 128;
-  const g = c.getContext("2d")!;
-  const grd = g.createRadialGradient(64, 64, 4, 64, 64, 64);
-  grd.addColorStop(0, "rgba(0,0,0,0.7)");
-  grd.addColorStop(1, "rgba(0,0,0,0)");
-  g.fillStyle = grd;
-  g.fillRect(0, 0, 128, 128);
-  return new CanvasTexture(c);
-};
-
-/** Soft rectangular glow. */
-const haloTex = () => {
-  const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 256;
-  const g = c.getContext("2d")!;
-  g.filter = "blur(28px)";
-  g.fillStyle = "rgba(255,255,255,0.55)";
-  g.fillRect(56, 56, 144, 144);
-  return new CanvasTexture(c);
-};
-
-/** A window's daylight falling on the floor (light theme only). */
-const sunTex = () => {
-  const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 256;
-  const g = c.getContext("2d")!;
-  g.filter = "blur(6px)";
-  g.fillStyle = "rgba(255,236,200,0.9)";
-  for (let i = 0; i < 3; i++) g.fillRect(24 + i * 74, 20, 62, 216);
-  return new CanvasTexture(c);
+      // Gloss: a soft highlight down one half.
+      const shine = g.createLinearGradient(w * 0.2, 0, w * 0.6, 0);
+      shine.addColorStop(0, "rgba(255,255,255,0)");
+      shine.addColorStop(0.6, "rgba(230,255,220,0.12)");
+      shine.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = shine;
+      g.fillRect(0, 0, w, h);
+      g.restore();
+      // Darker rim.
+      g.strokeStyle = "rgba(12,40,20,0.9)";
+      g.lineWidth = 3;
+      g.stroke(leaf);
+    },
+  },
+  /** Soft round contact shadow. */
+  shadow: {
+    w: 128,
+    h: 128,
+    draw(g) {
+      const grd = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+      grd.addColorStop(0, "rgba(0,0,0,0.7)");
+      grd.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 128, 128);
+    },
+  },
+  /** Soft rectangular glow. */
+  halo: {
+    w: 256,
+    h: 256,
+    draw(g) {
+      g.filter = "blur(28px)";
+      g.fillStyle = "rgba(255,255,255,0.55)";
+      g.fillRect(56, 56, 144, 144);
+    },
+  },
+  /** A window's daylight falling on the floor (light theme only). */
+  sun: {
+    w: 256,
+    h: 256,
+    draw(g) {
+      g.filter = "blur(6px)";
+      g.fillStyle = "rgba(255,236,200,0.9)";
+      for (let i = 0; i < 3; i++) g.fillRect(24 + i * 74, 20, 62, 216);
+    },
+  },
 };
 
 /* ---------- shaders: slide, beam, dust ---------- */
@@ -481,17 +499,20 @@ export default function ProjectorRoom({ slides, index, theme, onOpen, onSwipe, p
   useEffect(() => {
     const host = hostRef.current;
     if (!host || !near || noGL) return;
+    const mobile = window.innerWidth < 768;
     let renderer: WebGLRenderer;
     try {
-      renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+      renderer = new WebGLRenderer({ antialias: !mobile, powerPreference: "high-performance" });
     } catch {
       // The renderer can only be created here, after mount; if the GPU refuses, show the fallback once.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFailed(true);
       return;
     }
-    const mobile = window.innerWidth < 768;
-    renderer.setPixelRatio(Math.min(mobile ? 1.5 : 1.75, window.devicePixelRatio || 1));
+    // Phones: dense screens hide aliasing, so no MSAA and a lower ratio keep this full-screen scene fluid.
+    renderer.setPixelRatio(Math.min(mobile ? 1.25 : 1.75, window.devicePixelRatio || 1));
+    // Reading shader logs after every compile makes the browser wait for it; only useful in dev.
+    renderer.debug.checkShaderErrors = process.env.NODE_ENV !== "production";
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.toneMapping = ACESFilmicToneMapping;
     host.appendChild(renderer.domElement);
@@ -510,9 +531,9 @@ export default function ProjectorRoom({ slides, index, theme, onOpen, onSwipe, p
     tint(scene.background as Color, 0xe9e4db, 0x050608);
 
     /* ----- shell ----- */
-    const fabric = keep(fabricTex());
-    const floorMat = keep(new MeshStandardMaterial({ map: keep(woodTex()), roughness: 0.38, metalness: 0.02 }));
-    const wallMat = keep(new MeshStandardMaterial({ map: keep(plasterTex()), roughness: 0.95 }));
+    const fabric = keep(tex("fabric", 3));
+    const floorMat = keep(new MeshStandardMaterial({ map: keep(tex("wood", 3)), roughness: 0.38, metalness: 0.02 }));
+    const wallMat = keep(new MeshStandardMaterial({ map: keep(tex("plaster", 4)), roughness: 0.95 }));
     const ceilMat = keep(new MeshStandardMaterial({ roughness: 1 }));
     const trim = keep(new MeshStandardMaterial({ roughness: 0.6 }));
     tint(floorMat.color, 0xffffff, 0x3a2c22);
@@ -587,7 +608,7 @@ export default function ProjectorRoom({ slides, index, theme, onOpen, onSwipe, p
     }
     scene.add(win);
     // Sunlight patch on the floor below the window.
-    const sunMat = keep(new MeshBasicMaterial({ map: keep(sunTex()), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false }));
+    const sunMat = keep(new MeshBasicMaterial({ map: keep(tex("sun")), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false }));
     const sun = new Mesh(new PlaneGeometry(2.6, 2.4), sunMat);
     sun.rotation.set(-Math.PI / 2, 0, Math.PI / 2 + 0.15);
     sun.position.set(W / 2 - 1.9, 0.008, 2.6);
@@ -636,7 +657,7 @@ export default function ProjectorRoom({ slides, index, theme, onOpen, onSwipe, p
     bezel.position.set(SCREEN.x, SCREEN.y, SCREEN.z - 0.03);
     scene.add(bezel, screen);
     // The picture's glow bleeding onto the wall around the screen (mostly visible with the lights off).
-    const haloMat = keep(new MeshBasicMaterial({ map: keep(haloTex()), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false }));
+    const haloMat = keep(new MeshBasicMaterial({ map: keep(tex("halo")), transparent: true, depthWrite: false, blending: AdditiveBlending, toneMapped: false }));
     const halo = new Mesh(new PlaneGeometry(SCREEN.hw * 3.4, SCREEN.hh * 3.6), haloMat);
     halo.position.set(SCREEN.x, SCREEN.y, BACK + 0.01);
     scene.add(halo);
@@ -650,7 +671,7 @@ export default function ProjectorRoom({ slides, index, theme, onOpen, onSwipe, p
     tint(poufMat.color, 0xc8925c, 0x7a5b3e);
     const woodDark = keep(new MeshStandardMaterial({ color: 0x3a281b, roughness: 0.55 }));
     const metal = keep(new MeshStandardMaterial({ color: 0x1c1f24, roughness: 0.35, metalness: 0.6 }));
-    const shadowMat = keep(new MeshBasicMaterial({ map: keep(shadowTex()), transparent: true, depthWrite: false }));
+    const shadowMat = keep(new MeshBasicMaterial({ map: keep(tex("shadow")), transparent: true, depthWrite: false }));
     const contact = (x: number, z: number, sx: number, sz: number) => {
       const m = new Mesh(new PlaneGeometry(1, 1), shadowMat);
       m.rotation.x = -Math.PI / 2;
@@ -660,7 +681,7 @@ export default function ProjectorRoom({ slides, index, theme, onOpen, onSwipe, p
     };
     const rbox = (w: number, h: number, d: number, r = 0.06) => new RoundedBoxGeometry(w, h, d, 3, r);
 
-    const rugMat = keep(new MeshStandardMaterial({ map: keep(rugTex()), roughness: 1 }));
+    const rugMat = keep(new MeshStandardMaterial({ map: keep(tex("rug")), roughness: 1 }));
     tint(rugMat.color, 0xffffff, 0x8c8c8c);
     const rug = new Mesh(new PlaneGeometry(4.6, 3.2), rugMat);
     rug.rotation.x = -Math.PI / 2;
@@ -794,7 +815,7 @@ export default function ProjectorRoom({ slides, index, theme, onOpen, onSwipe, p
     plant.position.set(pot.position.x, 0, pot.position.z);
     scene.add(plant);
     const barkMat = keep(new MeshStandardMaterial({ color: 0x5b4836, roughness: 0.9 }));
-    const leafTex = keep(leafTexture());
+    const leafTex = keep(tex("leaf"));
     const leafMats = [0xffffff, 0xd8e8cf, 0xbfd6b4].map((c) =>
       keep(new MeshStandardMaterial({ map: leafTex, color: c, alphaTest: 0.5, side: DoubleSide, roughness: 0.45 })),
     );
