@@ -1,0 +1,29 @@
+.cform{max-width:1200px;margin:clamp(64px,10vh,120px) auto 0;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:clamp(16px,2.4vw,28px);align-items:stretch}
+.cform-card,.cform-cta{border-radius:22px;padding:clamp(22px,3.4vw,44px);background:var(--c-chip);color:var(--c-primary);transition:background-color .6s ease}
+.cform-cta{display:flex;flex-direction:column;align-items:flex-start;border:1px solid rgba(127,127,127,.28);background:transparent}
+.cform-eyebrow{margin:0;font:500 12px/1 Inter,"Inter Fallback",sans-serif;letter-spacing:.18em;text-transform:uppercase;color:var(--c-tertiary)}
+.cform-title{margin:14px 0 0;font-family:Newsreader,"Newsreader Fallback",serif;font-weight:500;font-size:clamp(32px,4vw,52px);line-height:1;letter-spacing:-.04em;color:var(--c-primary)}
+.cform-title em{font-style:italic;color:var(--c-accent)}
+.cform-form{display:flex;flex-direction:column;gap:18px;margin-top:28px}
+.cform-field{display:flex;flex-direction:column;gap:8px}
+.cform-field span{font:500 13px/1 Inter,"Inter Fallback",sans-serif;letter-spacing:-.01em;color:var(--c-tertiary)}
+.cform-field input,.cform-field textarea{width:100%;font:400 17px/1.4 Inter,"Inter Fallback",sans-serif;letter-spacing:-.02em;color:var(--c-primary);background:var(--c-bg);border:1px solid rgba(127,127,127,.3);border-radius:12px;padding:14px 16px;outline:none;resize:vertical;transition:border-color .25s ease,box-shadow .25s ease,background-color .6s ease}
+.cform-field textarea{min-height:130px}
+.cform-field input::placeholder,.cform-field textarea::placeholder{color:var(--c-tertiary);opacity:.8}
+.cform-field input:focus,.cform-field textarea:focus{border-color:var(--c-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-accent) 22%,transparent)}
+.cform-hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
+.cform-submit{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:fit-content;max-width:100%;padding:15px 26px;border-radius:999px;border:1px solid var(--c-primary);background:var(--c-primary);color:var(--c-bg);font:500 16px/1 Inter,"Inter Fallback",sans-serif;letter-spacing:-.02em;cursor:pointer;transition:background .3s ease,color .3s ease,opacity .2s}
+.cform-submit:hover{background:var(--c-accent);border-color:var(--c-accent);color:#fff}
+.cform-submit:disabled{opacity:.6;cursor:progress}
+.cform-submit--ghost{background:transparent;color:var(--c-primary);margin-top:auto}
+.cform-arrow{display:inline-block;transition:transform .4s cubic-bezier(.2,.9,.3,1.3)}
+.cform-submit:hover .cform-arrow{transform:translate(2px,-2px)}
+.cform-error{margin:0;font:500 14px/1.4 Inter,"Inter Fallback",sans-serif;color:#f04438}
+.cform-done{margin-top:28px;font:400 17px/1.5 Inter,"Inter Fallback",sans-serif;letter-spacing:-.02em;color:var(--c-secondary)}
+.cform-done-title{margin:0 0 10px;font-family:Newsreader,"Newsreader Fallback",serif;font-size:32px;letter-spacing:-.03em;color:var(--c-primary)}
+.cform-done-title span{color:#12b76a}
+.cform-link{margin-top:10px;padding:0;background:none;border:0;border-bottom:1px solid currentColor;color:var(--c-primary);font:500 15px/1.4 Inter,"Inter Fallback",sans-serif;cursor:pointer}
+.cform-cta-copy{margin:18px 0 28px;font:400 clamp(16px,1.5vw,19px)/1.5 Inter,"Inter Fallback",sans-serif;letter-spacing:-.02em;color:var(--c-secondary);max-width:34ch}
+.cform-reply{margin:22px 0 0;font:500 13px/1.4 Inter,"Inter Fallback",sans-serif;color:var(--c-tertiary)}
+@media (max-width:860px){.cform{grid-template-columns:1fr}.cform-cta{min-height:0}.cform-submit--ghost{margin-top:0}}
+@media (max-width:480px){.cform-submit{width:100%}}

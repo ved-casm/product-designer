@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 
 const LakeScene = dynamic(() => import("./LakeScene"), { ssr: false });
 import WaterStream from "./LazyWaterStream";
+import ContactForm from "./ContactForm";
 
 export const GO_FLOW_EVENT = "v2-go-flow";
 
@@ -180,6 +181,8 @@ export default function Contact() {
 
         <PortraitBadge size={isMobile ? 240 : 360} drawn={inView} />
       </div>
+
+      <ContactForm />
 
       <div className="contact-foot">
         <LakeScene theme={theme} className="contact-lake" />
