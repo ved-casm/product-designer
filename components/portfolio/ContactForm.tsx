@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { PROFILE } from "./content";
 import "./ContactForm.css";
 
 const ENDPOINT = "https://ved-portfolio-nine.vercel.app/api/contact-relay";
@@ -44,10 +45,12 @@ export default function ContactForm() {
   return (
     <div className="cform" id="contact-form">
       <div className="cform-card">
-        <p className="cform-eyebrow">send a note</p>
-        <h3 className="cform-title">
-          tell me about the <em>product</em>
-        </h3>
+        <div className="cform-head">
+          <p className="cform-eyebrow">send a note</p>
+          <h3 className="cform-title">
+            tell me about the <em>product</em>
+          </h3>
+        </div>
 
         {status === "sent" ? (
           <div className="cform-done" role="status">
@@ -60,48 +63,70 @@ export default function ContactForm() {
             </button>
           </div>
         ) : (
-          <form onSubmit={onSubmit} noValidate={false} className="cform-form">
+          <form onSubmit={onSubmit} className="cform-form">
+            <div className="cform-row">
+              <label className="cform-field">
+                <span className="cform-num">01</span>
+                <span className="cform-label">name</span>
+                <input name="name" type="text" required maxLength={120} autoComplete="name" placeholder="your name" />
+                <i className="cform-beam" aria-hidden />
+              </label>
+              <label className="cform-field">
+                <span className="cform-num">02</span>
+                <span className="cform-label">email</span>
+                <input name="email" type="email" required maxLength={200} autoComplete="email" placeholder="you@company.com" />
+                <i className="cform-beam" aria-hidden />
+              </label>
+            </div>
             <label className="cform-field">
-              <span>name</span>
-              <input name="name" type="text" required maxLength={120} autoComplete="name" placeholder="your name" />
-            </label>
-            <label className="cform-field">
-              <span>email</span>
-              <input name="email" type="email" required maxLength={200} autoComplete="email" placeholder="you@company.com" />
-            </label>
-            <label className="cform-field">
-              <span>message</span>
-              <textarea name="message" required maxLength={4000} rows={5} placeholder="what are you building?" />
+              <span className="cform-num">03</span>
+              <span className="cform-label">what are you building?</span>
+              <textarea name="message" required maxLength={4000} rows={4} placeholder="a few lines about the product, the stage and the timeline" />
+              <i className="cform-beam" aria-hidden />
             </label>
             <input className="cform-hp" name="company" type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+            <div className="cform-foot">
+              <button type="submit" className="cform-submit" disabled={status === "sending"}>
+                <span>{status === "sending" ? "sending..." : "send message"}</span>
+                <span className="cform-arrow" aria-hidden>
+                  ↗
+                </span>
+              </button>
+              <p className="cform-note">reply within 24 hours</p>
+            </div>
             {status === "error" && (
               <p className="cform-error" role="alert">
                 {error}
               </p>
             )}
-            <button type="submit" className="cform-submit" disabled={status === "sending"}>
-              <span>{status === "sending" ? "sending..." : "send message"}</span>
-              <span className="cform-arrow" aria-hidden>
-                ↗
-              </span>
-            </button>
           </form>
         )}
       </div>
 
       <aside className="cform-cta">
-        <p className="cform-eyebrow">prefer to talk?</p>
+        <i className="cform-cta-beam" aria-hidden />
+        <div className="cform-cta-top">
+          <span className="cform-avatar" style={{ backgroundImage: `url(${PROFILE.portrait})` }} role="img" aria-label="Vedank Gaur" />
+          <span className="cform-avail">
+            <span className="cform-dot" />
+            taking new products
+          </span>
+        </div>
         <h3 className="cform-title">
-          book a <em>call</em>
+          prefer to <em>talk?</em>
         </h3>
-        <p className="cform-cta-copy">pick a slot that works for you. quick 30 minute intro, no prep needed.</p>
-        <a className="cform-submit cform-submit--ghost" href={BOOKING_URL} target="_blank" rel="noopener noreferrer">
+        <p className="cform-cta-copy">grab a slot on my calendar. we go through the product, the goal and what shipping it looks like.</p>
+        <ul className="cform-chips">
+          <li>30 min</li>
+          <li>intro call</li>
+          <li>no prep needed</li>
+        </ul>
+        <a className="cform-book" href={BOOKING_URL} target="_blank" rel="noopener noreferrer">
           <span>book a call</span>
           <span className="cform-arrow" aria-hidden>
             ↗
           </span>
         </a>
-        <p className="cform-reply">or just wait for my reply - usually within 24 hours.</p>
       </aside>
     </div>
   );
